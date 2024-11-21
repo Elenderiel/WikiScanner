@@ -54,24 +54,21 @@ def recursiveGraphBuild(Nodes, depth = 1):
     links, linksFetched = [], 0
     try:
         #extracts links from each response.json object in async return list
-        for i, result in enumerate(asyncio.run(getChildNodes(Nodes))):
-            if 'parse' in result and 'links' in result['parse']: 
-                childNodes = [link['*'] for link in result['parse']['links'] if link['ns'] == 0]
+        for i, resultObject in enumerate(asyncio.run(getChildNodes(Nodes))):
+            if 'parse' in resultObject and 'links' in resultObject['parse']: 
+                childNodes = [link['*'] for link in resultObject['parse']['links'] if link['ns'] == 0]
                 linksFetched += len(childNodes)
                 linkDict[Nodes[i]] = linkDict.get(Nodes[i], 0) + len(childNodes)
-                childNodes = childNodes[:10]
+                childNodes = childNodes[:maxLinks]
             else:
                 print("response doesn't contain links object: ", Nodes[i])
             links += childNodes
-            
             #adds the fetched links to the parent node (creates parent node if it doesn't exist)
             graph[Nodes[i]] = graph.get(Nodes[i], []) + childNodes
-
     except Exception as e:
         print('unable to construct graph: ', e)
 
     print(f'links fetched at depth {depth}: {linksFetched} \n ...')
-
     if depth < maxDepth:
         recursiveGraphBuild(links, depth + 1)
 
@@ -81,6 +78,7 @@ recursiveGraphBuild([title])
 
 G = nx.Graph(graph)
 Graph = Network(height='100vh', width='100%', bgcolor='#11111b', font_color='white')
+Graph.barnes_hut(spring_length=30, gravity=-40000, spring_strength=0.02)
 Graph.from_nx(G)
 for node in Graph.nodes:
     if node['id'] == title: node['color'] = 'red'
@@ -88,4 +86,5 @@ for node in Graph.nodes:
     if node['id'] in linkDict.keys():
         node['value'] = linkDict[node['id']]
         node['title'] = str(node['value'])
+Graph.show_buttons(filter_=['physics'])
 Graph.show('test.html', notebook=False)
